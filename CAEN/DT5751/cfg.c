@@ -16,16 +16,21 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
   char str[1000], str1[1000];
   int i, ch=-1, val;
 
+  // default cfg
+  cfg->version=0;
   cfg->ns=1024;
   cfg->post=75;
-  cfg->mask=0x0;
+  cfg->chMask=0x0;
   for (i=0; i<Nch; i++) cfg->thr[i]=500;
   for (i=0; i<Nch; i++) cfg->offset[i]=0;
 
+  // parse cfg file
   while (!feof(fcfg)) {
     // read a word from the file
     int read = fscanf(fcfg, "%s", str);
-    if(!read || (read == EOF) || !strlen(str)) continue;
+
+    // skip empty lines
+    if(!read || !strlen(str)) continue;
 
     // skip comments
     if(str[0] == '#') {
@@ -82,21 +87,21 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
 
     // Global trigger mode
     if (strstr(str, "TRIGGER_MODE")!=NULL) {
-      TRG_MODE_t tm;
+      TRG_SRC_t trg;
       read = fscanf(fcfg, "%s", str1);
       if (strcmp(str1, "SOFTWARE")==0)
-	tm = SOFTWARE_TRG;
+	trg = SOFTWARE;
       else if (strcmp(str1, "INTERNAL")==0)
-	tm = INTERNAL_TRG;
+	trg = INTERNAL;
       else if (strcmp(str1, "EXTERNAL_NIM")==0)
-	tm = EXTERNAL_NIM;
+	trg = EXTERNAL_NIM;
       else if (strcmp(str1, "EXTERNAL_TTL")==0)
-	tm = EXTERNAL_TTL;
+	trg = EXTERNAL_TTL;
       else {
 	printf("%s: Invalid Parameter\n", str);
 	continue;
       }
-      cfg->mode = tm;
+      cfg->mode = trg;
       continue;
     }
 
@@ -124,15 +129,15 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
       read = fscanf(fcfg, "%s", str1);
       if (strcmp(str1, "YES")==0) {
 	if (ch == -1)
-	  cfg->mask = 0xF;
+	  cfg->chMask = 0xF;
 	else
-	  cfg->mask |= (1 << ch);
+	  cfg->chMask |= (1 << ch);
 	continue;
       } else if (strcmp(str1, "NO")==0) {
 	if (ch == -1)
-	  cfg->mask = 0x0;
+	  cfg->chMask = 0x0;
 	else
-	  cfg->mask &= ~(1 << ch);
+	  cfg->chMask &= ~(1 << ch);
 	continue;
       } else {
 	printf("%s: invalid option\n", str);
