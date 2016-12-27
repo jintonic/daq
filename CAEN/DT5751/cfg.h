@@ -8,12 +8,11 @@
 #define Nch (4) ///< total number of channels
 #endif
 
-typedef enum {
-   SOFTWARE,
-   INTERNAL,
-   EXTERNAL_TTL,
-   EXTERNAL_NIM,
-} TRG_SRC_t; ///< Source of trigger signal
+#ifndef VERSION
+#define VERSION (0) ///< versin of binary data structure
+#endif
+
+typedef enum { TTL, NIM, } TRG_SRC_t; ///< Source of trigger signal
 
 /**
  * Event header defined by CAEN.
@@ -43,18 +42,20 @@ typedef struct {
  */
 typedef struct {
    uint16_t run;        ///< run number, up to 2^16 = 65536
-   uint8_t  subrun;     ///< sub run number, up to 2^8 = 256
-   uint8_t  version;    ///< binary format version number, up to 2^8 = 256
+   uint8_t  sub;        ///< sub run number, up to 2^8 = 256
+   uint8_t  ver;        ///< binary format version number, up to 2^8 = 256
    uint32_t tsec;       ///< time from OS in second
    uint32_t tus;        ///< time from OS in micro second
-   uint32_t ns;         ///< number of samples in each wf
-   uint8_t  reserved;
-   uint8_t  post;       ///< percentage of wf after trg, 0 ~ 100
-   uint8_t  chMask;     ///< channel enable/disable mask
-   uint8_t  mode;       ///< trigger mode
+   uint16_t ns;         ///< number of samples in each wf
+   unsigned mask:    4; ///< channel enable/disable mask
+   unsigned swTrgMod:2; ///< software trigger mode: CAEN_DGTZ_TriggerMode_t
+   unsigned exTrgMod:2; ///< external trigger mode: CAEN_DGTZ_TriggerMode_t
+   unsigned exTrgSrc:1; ///< external trigger source: 0 - TTL, 1 - NIM
+   unsigned post:    7; ///< percentage of wf after trg, 0 ~ 100
    uint32_t trgMask;    ///< trigger mask and coincidence window
    uint16_t thr[Nch];   ///< 0 ~ 2^10-1
    uint16_t offset[Nch];///< 16-bit DC offset
+   uint8_t  trgMod[Nch];///< channel trigger mode: CAEN_DGTZ_TriggerMode_t
 } RUN_CFG_t;
 
 void SaveCurrentTime(RUN_CFG_t *cfg); ///< Save OS time to \param cfg.
