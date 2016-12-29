@@ -1,5 +1,6 @@
 #include <time.h>
 #include <string.h>
+#include <ctype.h>
 #include <CAENDigitizerType.h>
 #include "cfg.h"
 
@@ -14,7 +15,7 @@ void SaveCurrentTime(RUN_CFG_t *cfg)
 int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg) 
 {
   char setting[256], option[256];
-  int i, ch=-1, parameter, swTrgMod, exTrgMod, exTrgSrc, post;
+  int i, ch=-1, parameter, post;
 
   // default cfg
   cfg->ver=VERSION;
@@ -22,13 +23,13 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
   cfg->mask=0x0;
   cfg->swTrgMod=CAEN_DGTZ_TRGMODE_DISABLED;
   cfg->exTrgMod=CAEN_DGTZ_TRGMODE_DISABLED;
+  cfg->chTrgMod=CAEN_DGTZ_TRGMODE_ACQ_ONLY;
   cfg->exTrgSrc=TTL;
   cfg->post=75;
-  cfg->trgMask=0xf; // trigger on any channel
+  cfg->trgMask=0x0; // trigger on none of the channels
   for (i=0; i<Nch; i++) {
     cfg->thr[i]=500;
     cfg->offset[i]=0;
-    cfg->trgMod[i]=CAEN_DGTZ_TRGMODE_ACQ_ONLY;
   }
 
   // parse cfg file
@@ -45,152 +46,166 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
       continue;
     }
 
-    // Section (COMMON or individual channel)
+    // upper case to lower case
+    for(i=0; setting[i]; i++) setting[i] = tolower(setting[i]);
+
+    // Section (Common or individual channel)
     if (setting[0] == '[') {
-      if (strstr(setting, "COMMON")) {
+      if (strstr(setting, "common")) {
 	ch = -1;
 	continue; 
       }
       sscanf(setting+1, "%d", &parameter);
-      if (parameter < 0 || parameter >= Nch) {
-	printf("%s: Invalid channel number\n", setting);
-      } else {
+      if (parameter < 0 || parameter >= Nch)
+	printf("%d: invalid channel number\n", parameter);
+      else
 	ch = parameter;
-      }
       continue;
     }
 
     // number of waveform samples
-    if (strstr(setting, "N_WF_SMPL")!=NULL) {
-      read = fscanf(fcfg, "%hu", &cfg->ns);
+    if (strstr(setting, "number_of_samples")!=NULL) {
+      read = fscanf(fcfg, "%u", &cfg->ns);
       continue;
     }
 
-    // channel recording enable (YES/NO)
-    if (strstr(setting, "CH_REC_ENABLE")!=NULL) {
-      read = fscanf(fcfg, "%s", option);
-      if (strcmp(option, "YES")==0) {
-	if (ch == -1) cfg->mask = 0xF;
-	else cfg->mask |= (1 << ch);
-	continue;
-      } else if (strcmp(option, "NO")==0) {
-	if (ch == -1) cfg->mask = 0x0;
-	else cfg->mask &= ~(1 << ch);
-	continue;
-      } else {
-	printf("%s: invalid option\n", option);
-      }
+    // post trigger (percentage after trigger)
+    if (strstr(setting, "post_trigger_percentage")!=NULL) {
+      read = fscanf(fcfg, "%d", &post);
+      cfg->post=post;
       continue;
     }
 
     // software trigger mode
-    if (strstr(setting, "SW_TRG_MOD")!=NULL) {
+    if (strstr(setting, "software_trigger_mode")!=NULL) {
       read = fscanf(fcfg, "%s", option);
-      if (strcmp(option, "DISABLED")==0)
+      for(i=0; setting[i]; i++) setting[i] = tolower(setting[i]);
+      if (strcmp(option, "disabled")==0)
 	cfg->swTrgMod = CAEN_DGTZ_TRGMODE_DISABLED;
-      else if (strcmp(option, "EXTOUT_ONLY")==0)
+      else if (strcmp(option, "extout_only")==0)
 	cfg->swTrgMod = CAEN_DGTZ_TRGMODE_EXTOUT_ONLY;
-      else if (strcmp(option, "ACQ_ONLY")==0)
+      else if (strcmp(option, "acq_only")==0)
 	cfg->swTrgMod = CAEN_DGTZ_TRGMODE_ACQ_ONLY;
-      else if (strcmp(option, "ACQ_AND_EXTOUT")==0)
+      else if (strcmp(option, "acq_and_extout")==0)
 	cfg->swTrgMod = CAEN_DGTZ_TRGMODE_ACQ_AND_EXTOUT;
       else
-	printf("%s: invalid option\n", option);
+	printf("%s: invalid trigger mode\n", option);
+      continue;
+    }
+
+    // internal trigger mode 
+    if (strstr(setting, "internal_trigger_mode")!=NULL) {
+      read = fscanf(fcfg, "%s", option);
+      for(i=0; setting[i]; i++) setting[i] = tolower(setting[i]);
+      if (strcmp(option, "disabled")==0)
+	cfg->chTrgMod = CAEN_DGTZ_TRGMODE_DISABLED;
+      else if (strcmp(option, "extout_only")==0)
+	cfg->chTrgMod = CAEN_DGTZ_TRGMODE_EXTOUT_ONLY;
+      else if (strcmp(option, "acq_only")==0)
+	cfg->chTrgMod = CAEN_DGTZ_TRGMODE_ACQ_ONLY;
+      else if (strcmp(option, "acq_and_extout")==0)
+	cfg->chTrgMod = CAEN_DGTZ_TRGMODE_ACQ_AND_EXTOUT;
+      else 
+	printf("%s: invalid internal trigger mode\n", option);
+
       continue;
     }
 
     // external trigger mode
-    if (strstr(setting, "EX_TRG_MOD")!=NULL) {
+    if (strstr(setting, "external_trigger_mode")!=NULL) {
       read = fscanf(fcfg, "%s", option);
-      if (strcmp(option, "DISABLED")==0)
+      for(i=0; setting[i]; i++) setting[i] = tolower(setting[i]);
+      if (strcmp(option, "disabled")==0)
 	cfg->exTrgMod = CAEN_DGTZ_TRGMODE_DISABLED;
-      else if (strcmp(option, "EXTOUT_ONLY")==0)
+      else if (strcmp(option, "extout_only")==0)
 	cfg->exTrgMod = CAEN_DGTZ_TRGMODE_EXTOUT_ONLY;
-      else if (strcmp(option, "ACQ_ONLY")==0)
+      else if (strcmp(option, "acq_only")==0)
 	cfg->exTrgMod = CAEN_DGTZ_TRGMODE_ACQ_ONLY;
-      else if (strcmp(option, "ACQ_AND_EXTOUT")==0)
+      else if (strcmp(option, "acq_and_extout")==0)
 	cfg->exTrgMod = CAEN_DGTZ_TRGMODE_ACQ_AND_EXTOUT;
       else
-	printf("%s: invalid option\n", option);
+	printf("%s: invalid trigger mode\n", option);
       continue;
     }
 
     // external trigger source
-    if (strstr(setting, "EX_TRG_SRC")!=NULL) {
+    if (strstr(setting, "external_trigger_source")!=NULL) {
       read = fscanf(fcfg, "%s", option);
+      for(i=0; setting[i]; i++) setting[i] = toupper(setting[i]);
       if (strcmp(option, "TTL")==0)
 	cfg->exTrgSrc=TTL;
       else if (strcmp(option, "NIM")==0)
 	cfg->exTrgSrc=NIM;
       else
-	printf("%s: invalid option\n", option);
-      continue;
-    }
-
-    // post trigger (percentage after trigger)
-    if (strstr(setting, "POST_TRG_%")!=NULL) {
-      read = fscanf(fcfg, "%hhu", &post);
-      cfg->post=post;
-      continue;
-    }
-
-    // channel trigger mask (YES/NO)
-    if (strstr(setting, "CH_TRG_ENABLE")!=NULL) {
-      read = fscanf(fcfg, "%s", option);
-      if (strcmp(option, "YES")==0) {
-	if (ch == -1) cfg->trgMask = 0xF;
-	else cfg->trgMask |= (1 << ch);
-	continue;
-      } else if (strcmp(option, "NO")==0) {
-	if (ch == -1) cfg->trgMask = 0x0;
-	else cfg->trgMask &= ~(1 << ch);
-	continue;
-      } else {
-	printf("%s: invalid option\n", option);
-      }
-      continue;
-    }
-
-    // channel threshold
-    if (strstr(setting, "CH_TRG_THRESHOLD")!=NULL) {
-      read = fscanf(fcfg, "%hu", &parameter);
-      if (ch == -1)
-	for(i=0; i<Nch; i++) cfg->thr[i] = parameter;
-      else
-	cfg->thr[ch] = parameter;
+	printf("%s: invalid trigger source\n", option);
       continue;
     }
 
     // channel DC offset
-    if (!strcmp(setting, "CH_DC_OFFSET")) {
-      read = fscanf(fcfg, "%hu", &parameter);
-      if (ch == -1)
-	for(i=0; i<Nch; i++) cfg->offset[i] = parameter;
-      else
-	cfg->offset[ch] = parameter;
+    if (!strcmp(setting, "channel_DC_offset")) {
+      read = fscanf(fcfg, "%u", &parameter);
+      if (ch == -1) for(i=0; i<Nch; i++) cfg->offset[i] = parameter;
+      else cfg->offset[ch] = parameter;
       continue;
     }
 
-    // channel trigger mode 
-    if (strstr(setting, "CH_TRG_MOD")!=NULL) {
+    // channel threshold
+    if (strstr(setting, "channel_trigger_threshold")!=NULL) {
+      read = fscanf(fcfg, "%u", &parameter);
+      if (ch == -1) for(i=0; i<Nch; i++) cfg->thr[i] = parameter;
+      else cfg->thr[ch] = parameter;
+      continue;
+    }
+
+    // channel trigger mask (yes/no)
+    if (strstr(setting, "channel_enable_trigger")!=NULL) {
       read = fscanf(fcfg, "%s", option);
-      CAEN_DGTZ_TriggerMode_t tm = CAEN_DGTZ_TRGMODE_DISABLED;
-      if (strcmp(option, "DISABLED")==0)
-	tm = CAEN_DGTZ_TRGMODE_DISABLED;
-      else if (strcmp(option, "EXTOUT_ONLY")==0)
-	tm = CAEN_DGTZ_TRGMODE_EXTOUT_ONLY;
-      else if (strcmp(option, "ACQ_ONLY")==0)
-	tm = CAEN_DGTZ_TRGMODE_ACQ_ONLY;
-      else if (strcmp(option, "ACQ_AND_EXTOUT")==0)
-	tm = CAEN_DGTZ_TRGMODE_ACQ_AND_EXTOUT;
-      else 
-	printf("%s: invalid option\n", option);
+      for(i=0; setting[i]; i++) setting[i] = tolower(setting[i]);
+      if (strcmp(option, "yes")==0) {
+	if (ch == -1) cfg->trgMask = 0xF;
+	else cfg->trgMask |= (1 << ch);
+	continue;
+      } else if (strcmp(option, "no")==0) {
+	if (ch == -1) cfg->trgMask = 0x0;
+	else cfg->trgMask &= ~(1 << ch);
+	continue;
+      } else {
+	printf("%s: invalid option to enable channel trigger\n", option);
+      }
+      continue;
+    }
 
-      if (ch == -1)
-	for(i=0; i<Nch; i++) cfg->trgMod[i] = tm;
-      else
-	cfg->trgMod[ch] = tm;
+    // channel recording mask (yes/no)
+    if (strstr(setting, "channel_enable_recording")!=NULL) {
+      read = fscanf(fcfg, "%s", option);
+      for(i=0; setting[i]; i++) setting[i] = tolower(setting[i]);
+      if (strcmp(option, "yes")==0) {
+	if (ch == -1) cfg->mask = 0xf;
+	else cfg->mask |= (1 << ch);
+	continue;
+      } else if (strcmp(option, "no")==0) {
+	if (ch == -1) cfg->mask = 0x0;
+	else cfg->mask &= ~(1 << ch);
+	continue;
+      } else {
+	printf("%s: invalid option to enable channel recording\n", option);
+      }
+      continue;
+    }
 
+    // coincidence window
+    if (strstr(setting, "coincidence_window")!=NULL) {
+      read = fscanf(fcfg, "%u", &parameter);
+      if (parameter < 16) cfg->trgMask |= (parameter << 20);
+      else printf("%d: invalid coincidence window\n",parameter);
+      continue;
+    }
+
+    // coincidence level
+    if (strstr(setting, "coincidence_level")!=NULL) {
+      read = fscanf(fcfg, "%u", &parameter);
+      if (parameter < 16) cfg->trgMask |= (parameter << 24);
+      else printf("%d: invalid coincidence level\n",parameter);
       continue;
     }
 

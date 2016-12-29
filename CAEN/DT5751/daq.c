@@ -49,30 +49,24 @@ int main(int argc, char* argv[])
   err |= CAEN_DGTZ_Reset(dt5751);
   err |= CAEN_DGTZ_SetRecordLength(dt5751,cfg.ns);
   err |= CAEN_DGTZ_SetPostTriggerSize(dt5751,cfg.post);
-  err |= CAEN_DGTZ_SetMaxNumEventsBLT(dt5751,1024); // maximized
+  err |= CAEN_DGTZ_SetMaxNumEventsBLT(dt5751,512);//internal Mem: 1.75M samples
   err |= CAEN_DGTZ_SetAcquisitionMode(dt5751,CAEN_DGTZ_SW_CONTROLLED);
   err |= CAEN_DGTZ_SetChannelEnableMask(dt5751,cfg.mask);
-  if (cfg.mode==EXTERNAL_TTL) {
-    err |= CAEN_DGTZ_SetExtTriggerInputMode(dt5751,CAEN_DGTZ_TRGMODE_ACQ_ONLY);
+  err |= CAEN_DGTZ_SetExtTriggerInputMode(dt5751,cfg.exTrgMod);
+  if (cfg.exTrgSrc=TTL)
     err |= CAEN_DGTZ_SetIOLevel(dt5751,CAEN_DGTZ_IOLevel_TTL);
-  } else if (cfg.mode==EXTERNAL_NIM) {
-    err |= CAEN_DGTZ_SetExtTriggerInputMode(dt5751,CAEN_DGTZ_TRGMODE_ACQ_ONLY);
+  else 
     err |= CAEN_DGTZ_SetIOLevel(dt5751,CAEN_DGTZ_IOLevel_NIM);
-  } else if (cfg.mode==SOFTWARE_TRG)
-    err |= CAEN_DGTZ_SetSWTriggerMode(dt5751,CAEN_DGTZ_TRGMODE_ACQ_ONLY);
-  else
-    err |= CAEN_DGTZ_SetChannelSelfTrigger(
-	dt5751,CAEN_DGTZ_TRGMODE_ACQ_ONLY,cfg.mask);
+  err |= CAEN_DGTZ_SetSWTriggerMode(dt5751,cfg.swTrgMod);
+  err |= CAEN_DGTZ_SetChannelSelfTrigger(dt5751,cfg.chTrgMod,cfg.trgMask);
   // configure individual channels
   int ich /* channel index */, Non=0 /* number of channels turned on */;
   for (ich=0; ich<Nch; ich++) {
     if ((cfg.mask & (1<<ich))>>ich) Non++;
     err |= CAEN_DGTZ_SetTriggerPolarity(
 	dt5751,ich,CAEN_DGTZ_TriggerOnFallingEdge);
-    err |= CAEN_DGTZ_SetChannelDCOffset(
-	dt5751,ich,(uint32_t)cfg.offset[ich]);
-    err |= CAEN_DGTZ_SetChannelTriggerThreshold(
-	dt5751,ich,(uint32_t)cfg.thr[ich]);
+    err |= CAEN_DGTZ_SetChannelDCOffset(dt5751,ich,cfg.offset[ich]);
+    err |= CAEN_DGTZ_SetChannelTriggerThreshold(dt5751,ich,cfg.thr[ich]);
   }
   if (err) { 
     printf("Can't configure board! Abort.\n");
@@ -93,9 +87,9 @@ int main(int argc, char* argv[])
 
   // open output file
   cfg.run=atoi(argv[2]);
-  cfg.subrun=1;
+  cfg.sub=1;
   char fname[32];
-  sprintf(fname, "run_%06d.%06d",cfg.run,cfg.subrun);
+  sprintf(fname, "run_%06d.%06d",cfg.run,cfg.sub);
   printf("Open output file %s\n", fname);
   FILE *output = fopen(fname,"wb");
 
@@ -124,12 +118,13 @@ int main(int argc, char* argv[])
   int now, tpre = now = cfg.tsec*1000 + cfg.tus/1000, dt, runtime=0;
 
   // output loop
-  int nEvtTot=0, nNeeded = 16777216, nEvtIn5min=0; uint32_t nEvtInBuf;
+  int nEvtTot=0, nNeeded = 16777216, nEvtIn5sec=0; uint32_t nEvtInBuf;
   if (argc==4) nNeeded=atoi(argv[3]);
   uint32_t bsize, fsize=0;
   while (nEvtTot<nNeeded && !interrupted) {
     // send software trigger to the board
-    if (cfg.mode==SOFTWARE_TRG) CAEN_DGTZ_SendSWtrigger(dt5751);
+    if (cfg.swTrgMod!=CAEN_DGTZ_TRGMODE_DISABLED)
+      CAEN_DGTZ_SendSWtrigger(dt5751);
 
     // read data from board
     CAEN_DGTZ_ReadMode_t rMode=CAEN_DGTZ_SLAVE_TERMINATED_READOUT_MBLT;
@@ -144,24 +139,17 @@ int main(int argc, char* argv[])
     int i;
     CAEN_DGTZ_GetNumEvents(dt5751,buffer,bsize,&nEvtInBuf);
     for (i=0; i<nEvtInBuf; i++) {
-      char *rawEvt = NULL;
-      CAEN_DGTZ_EventInfo_t eventInfo;
-      CAEN_DGTZ_UINT16_EVENT_t *evt = NULL;
-      CAEN_DGTZ_GetEventInfo(dt5751,buffer,bsize,i,&eventInfo,&rawEvt);
-      CAEN_DGTZ_DecodeEvent(dt5751,rawEvt,(void **)&evt);
-
-      hdr.size=sizeof(EVT_HDR_t)+sizeof(uint16_t)*cfg.ns*Non;
-      hdr.cnt=eventInfo.EventCounter;
-      hdr.ttt=eventInfo.TriggerTimeTag;
+      char *evt = NULL;
+      CAEN_DGTZ_EventInfo_t info;
+      CAEN_DGTZ_GetEventInfo(dt5751,buffer,bsize,i,&info,&evt);
+      hdr.size=info.EventSize;
+      hdr.cnt=info.EventCounter;
+      hdr.ttt=info.TriggerTimeTag;
       hdr.type=1; // a real event
       fwrite(&hdr,1,sizeof(EVT_HDR_t),output);
-      for (ich=0; ich<Nch; ich++)
-	if ((cfg.mask & (1<<ich))>>ich)
-	  fwrite(evt->DataChannel[ich],sizeof(uint16_t),cfg.ns,output);
+      fwrite(evt,1,info.EventSize,output);
 
-      CAEN_DGTZ_FreeEvent(dt5751,(void **)&evt);
-
-      nEvtTot++; nEvtIn5min++;
+      nEvtTot++; nEvtIn5sec++;
       if (nEvtTot>=nNeeded) break;
     }
 
@@ -175,10 +163,10 @@ int main(int argc, char* argv[])
       printf("-------------------------\n");
       printf("run lasts: %6.2f min\n",(float)runtime/60000.);
       printf("now event: %d\n", nEvtTot);
-      printf("trg rate:  %6.2f Hz\n", (float)nEvtIn5min/(float)dt*1000.);
+      printf("trg rate:  %6.2f Hz\n", (float)nEvtIn5sec/(float)dt*1000.);
       printf("press Ctrl-C to stop run\n");
       tpre=now;
-      nEvtIn5min=0;
+      nEvtIn5sec=0;
     }
 
     // start a new sub run when previous file is over 1GB
@@ -192,8 +180,8 @@ int main(int argc, char* argv[])
       fwrite(&cfg,1,sizeof(RUN_CFG_t),output);
       fclose(output);
 
-      cfg.subrun++;
-      sprintf(fname, "run_%06d.%06d",cfg.run,cfg.subrun);
+      cfg.sub++;
+      sprintf(fname, "run_%06d.%06d",cfg.run,cfg.sub);
       printf("Open output file %s\n", fname);
       output = fopen(fname,"wb");
       fwrite(&hdr,1,sizeof(EVT_HDR_t),output);
