@@ -46,14 +46,15 @@ int main(int argc, char* argv[])
   fclose(fcfg);
 
   // global settings
+  uint16_t maxNevt=512; // max number of events for each block transfer
   err |= CAEN_DGTZ_Reset(dt5751);
   err |= CAEN_DGTZ_SetRecordLength(dt5751,cfg.ns);
   err |= CAEN_DGTZ_SetPostTriggerSize(dt5751,cfg.post);
-  err |= CAEN_DGTZ_SetMaxNumEventsBLT(dt5751,512);//internal Mem: 1.75M samples
+  err |= CAEN_DGTZ_SetMaxNumEventsBLT(dt5751,maxNevt);//int. Mem.: 1.75M smpls
   err |= CAEN_DGTZ_SetAcquisitionMode(dt5751,CAEN_DGTZ_SW_CONTROLLED);
   err |= CAEN_DGTZ_SetChannelEnableMask(dt5751,cfg.mask);
   err |= CAEN_DGTZ_SetExtTriggerInputMode(dt5751,cfg.exTrgMod);
-  if (cfg.exTrgSrc=TTL)
+  if (cfg.exTrgSrc==TTL)
     err |= CAEN_DGTZ_SetIOLevel(dt5751,CAEN_DGTZ_IOLevel_TTL);
   else 
     err |= CAEN_DGTZ_SetIOLevel(dt5751,CAEN_DGTZ_IOLevel_NIM);
@@ -122,9 +123,13 @@ int main(int argc, char* argv[])
   if (argc==4) nNeeded=atoi(argv[3]);
   uint32_t bsize, fsize=0;
   while (nEvtTot<nNeeded && !interrupted) {
-    // send software trigger to the board
+    int i;
+    // send 1 kHz software trigger to the board for "maxNevt" times
     if (cfg.swTrgMod!=CAEN_DGTZ_TRGMODE_DISABLED)
-      CAEN_DGTZ_SendSWtrigger(dt5751);
+      for (i=0; i<maxNevt; i++) {
+	CAEN_DGTZ_SendSWtrigger(dt5751);
+	nanosleep((const struct timespec[]){{0, 1000000L}}, NULL);
+      }
 
     // read data from board
     CAEN_DGTZ_ReadMode_t rMode=CAEN_DGTZ_SLAVE_TERMINATED_READOUT_MBLT;
@@ -136,7 +141,6 @@ int main(int argc, char* argv[])
     fsize += bsize;
 
     // write data to file
-    int i;
     CAEN_DGTZ_GetNumEvents(dt5751,buffer,bsize,&nEvtInBuf);
     for (i=0; i<nEvtInBuf; i++) {
       char *evt = NULL;
