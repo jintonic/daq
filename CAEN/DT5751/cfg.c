@@ -79,7 +79,7 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
     // software trigger mode
     if (strstr(setting, "software_trigger_mode")!=NULL) {
       read = fscanf(fcfg, "%s", option);
-      for(i=0; setting[i]; i++) setting[i] = tolower(setting[i]);
+      for(i=0; option[i]; i++) option[i] = tolower(option[i]);
       if (strcmp(option, "disabled")==0)
 	cfg->swTrgMod = CAEN_DGTZ_TRGMODE_DISABLED;
       else if (strcmp(option, "extout_only")==0)
@@ -96,7 +96,7 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
     // internal trigger mode 
     if (strstr(setting, "internal_trigger_mode")!=NULL) {
       read = fscanf(fcfg, "%s", option);
-      for(i=0; setting[i]; i++) setting[i] = tolower(setting[i]);
+      for(i=0; option[i]; i++) option[i] = tolower(option[i]);
       if (strcmp(option, "disabled")==0)
 	cfg->chTrgMod = CAEN_DGTZ_TRGMODE_DISABLED;
       else if (strcmp(option, "extout_only")==0)
@@ -114,7 +114,7 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
     // external trigger mode
     if (strstr(setting, "external_trigger_mode")!=NULL) {
       read = fscanf(fcfg, "%s", option);
-      for(i=0; setting[i]; i++) setting[i] = tolower(setting[i]);
+      for(i=0; option[i]; i++) option[i] = tolower(option[i]);
       if (strcmp(option, "disabled")==0)
 	cfg->exTrgMod = CAEN_DGTZ_TRGMODE_DISABLED;
       else if (strcmp(option, "extout_only")==0)
@@ -131,7 +131,7 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
     // external trigger source
     if (strstr(setting, "external_trigger_source")!=NULL) {
       read = fscanf(fcfg, "%s", option);
-      for(i=0; setting[i]; i++) setting[i] = toupper(setting[i]);
+      for(i=0; option[i]; i++) option[i] = toupper(option[i]);
       if (strcmp(option, "TTL")==0)
 	cfg->exTrgSrc=TTL;
       else if (strcmp(option, "NIM")==0)
@@ -142,7 +142,7 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
     }
 
     // channel DC offset
-    if (!strcmp(setting, "channel_DC_offset")) {
+    if (strstr(setting, "channel_dc_offset")!=NULL) {
       read = fscanf(fcfg, "%u", &parameter);
       if (ch == -1) for(i=0; i<Nch; i++) cfg->offset[i] = parameter;
       else cfg->offset[ch] = parameter;
@@ -160,7 +160,7 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
     // channel trigger mask (yes/no)
     if (strstr(setting, "channel_enable_trigger")!=NULL) {
       read = fscanf(fcfg, "%s", option);
-      for(i=0; setting[i]; i++) setting[i] = tolower(setting[i]);
+      for(i=0; option[i]; i++) option[i] = tolower(option[i]);
       if (strcmp(option, "yes")==0) {
 	if (ch == -1) cfg->trgMask = 0xF;
 	else cfg->trgMask |= (1 << ch);
@@ -178,7 +178,7 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
     // channel recording mask (yes/no)
     if (strstr(setting, "channel_enable_recording")!=NULL) {
       read = fscanf(fcfg, "%s", option);
-      for(i=0; setting[i]; i++) setting[i] = tolower(setting[i]);
+      for(i=0; option[i]; i++) option[i] = tolower(option[i]);
       if (strcmp(option, "yes")==0) {
 	if (ch == -1) cfg->mask = 0xf;
 	else cfg->mask |= (1 << ch);
