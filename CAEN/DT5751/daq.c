@@ -146,11 +146,11 @@ int main(int argc, char* argv[])
       char *evt = NULL;
       CAEN_DGTZ_EventInfo_t info;
       CAEN_DGTZ_GetEventInfo(dt5751,buffer,bsize,i,&info,&evt);
-      hdr.size=info.EventSize;
-      hdr.cnt=info.EventCounter;
-      hdr.ttt=info.TriggerTimeTag;
-      hdr.type=1; // a real event
-      fwrite(&hdr,1,sizeof(EVT_HDR_t),output);
+      EVT_HDR_t *header = (EVT_HDR_t*) evt; // update event header
+      header->size=info.EventSize;
+      header->cnt=info.EventCounter;
+      header->ttt=info.TriggerTimeTag;
+      header->type=1; // a real event
       fwrite(evt,1,info.EventSize,output);
 
       nEvtTot++; nEvtIn5sec++;
