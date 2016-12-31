@@ -8,11 +8,11 @@ ifneq (X$(CAENSYS), X)
 endif
 
 # include sscanf.c if glibc < 2.7
-SRCS = $(wildcard *.c)
+SRC = cfg.c daq.c
 GLIBC_MIN_VER = $(shell ldd --version | head -1 | awk -F. '{print $$NF}')
-TOO_OLD = $(shell [ $(GLIBC_MIN_VER) -ge 7 ] && echo false)
-ifeq ($(TOO_OLD), false)
-  SRC=$(filter-out sscanf.c, $(SRCS))
+TOO_OLD = $(shell [ $(GLIBC_MIN_VER) -lt 7 ] && echo true)
+ifeq ($(TOO_OLD), true)
+  SRC+=sscanf.c
 endif
 OBJ=$(SRC:.c=.o)
 DEP=$(SRC:.c=.d)
