@@ -3,13 +3,10 @@
 # get path where this script locates
 while [ -h "$0" ] ; do dir="$(readlink "$0")"; done
 dir="$(cd -P "$(dirname "$dir")" && pwd)"
+echo $dir
 
 # check $NICEDAT
-if [ "X$NICEDAT" = X ]; then 
-  echo Environment variable NICEDAT is not set!
-  read -n1 -r -p "Press any key to quit..." key
-  exit
-fi
+if [ "X$NICEDAT" = X ]; then NICEDAT=~/data/nice; fi
 if [ ! -d $NICEDAT ]; then 
   echo Environment variable NICEDAT is set to $NICEDAT,
   echo which does not exist. Please set it to a valid location!
