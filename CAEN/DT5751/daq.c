@@ -119,19 +119,17 @@ int main(int argc, char* argv[])
   int now, tpre = now = cfg.tsec*1000 + cfg.tus/1000, dt, runtime=0;
 
   // output loop
-  int nEvtTot=0, nNeeded = 16777216, nEvtIn5sec=0; uint32_t nEvtInBuf;
+  int i, nEvtTot=0, nNeeded = 16777216, nEvtIn5sec=0; uint32_t nEvtInBuf;
   if (argc==4) nNeeded=atoi(argv[3]);
   uint32_t bsize, fsize=0;
   while (nEvtTot<nNeeded && !interrupted) {
-    int i;
-    // send 1 kHz software trigger to the board for "maxNevt" times
+    // send software trigger as fast as possible
     if (cfg.swTrgMod!=CAEN_DGTZ_TRGMODE_DISABLED)
-      for (i=0; i<maxNevt; i++) {
 	CAEN_DGTZ_SendSWtrigger(dt5751);
-	nanosleep((const struct timespec[]){{0, 1000000L}}, NULL);
-      }
 
-    // read data from board
+    // read data from board (it won't do anything if the total number of events
+    // in a block is less than the requested number of events for a single
+    // block transfer)
     CAEN_DGTZ_ReadMode_t rMode=CAEN_DGTZ_SLAVE_TERMINATED_READOUT_MBLT;
     err = CAEN_DGTZ_ReadData(dt5751,rMode,buffer,&bsize);
     if (err) {
