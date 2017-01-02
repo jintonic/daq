@@ -1,9 +1,7 @@
 #!/bin/bash
 
-# get path where this script locates
-while [ -h "$0" ] ; do dir="$(readlink "$0")"; done
-dir="$(cd -P "$(dirname "$dir")" && pwd)"
-echo $dir
+# get path where this script locates. It won't work for symbol links
+dir="$(cd $(dirname "$0") && pwd)"
 
 # check $NICEDAT
 if [ "X$NICEDAT" = X ]; then NICEDAT=~/data/nice; fi
@@ -87,5 +85,6 @@ sed -i '/^\s*$/d' $cfgfile
 # run executable
 name=$(basename $0)
 exe=${name%.sh}.exe
+echo $dir/$exe $cfgfile $run $n
 $dir/$exe $cfgfile $run $n
 read -n1 -r -p "Press any key to quit..." key
