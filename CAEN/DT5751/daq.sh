@@ -24,17 +24,17 @@ run=`expr $six + 1`
 echo "The last run file: $NICEDAT/$subdir/$file"
 echo "Type <Enter> to start run $run, or"
 echo "an integer in [1, $run) to overwrite an old run:"
-read -n ${#run} input
+read -e -n ${#run} input
 if [ "X$input" != X ]; then # not <Enter>
   while true; do # display promp until a valid input
     if [[ "$input" =~ ^[0-9]+$ ]]; then # positive integer
       if [ $input -eq $run ]; then break; fi
       if [ $input -lt $run ]; then
 	echo; echo "Overwrite run $input? (y/N)"
-	read -n 1 answer
+	read -n1 answer
 	if [ X$answer != Xy ]; then
 	  echo; echo "Please input a new run number in [1, $run]:"
-	  read -n ${#run} input
+	  read -e -n ${#run} input
 	  continue
 	fi
 	break
@@ -42,7 +42,7 @@ if [ "X$input" != X ]; then # not <Enter>
     fi
     echo; echo "Invalid run number: $input,"
     echo "please input an integer in [1, $run]:"
-    read -n ${#run} input
+    read -e -n ${#run} input
   done
   run=$input
 fi
@@ -50,7 +50,7 @@ fi
 # ask user to specify maximal number of events
 echo; echo Type the maximal number of events in run $run, or
 echo "<Enter> to skip the setting (One can use \"Ctrl+c\" to stop a run later):"
-read input
+read -e input
 if [ "X$input" != X ]; then # not <Enter>
   while true; do # display promp until a valid input
     if [[ "$input" =~ ^[0-9]+$ ]]; then
@@ -58,7 +58,7 @@ if [ "X$input" != X ]; then # not <Enter>
     fi
     echo; echo Invalid number of events: $input,
     echo please input a positive integer:
-    read input
+    read -e input
   done
   n=$input
 fi
