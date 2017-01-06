@@ -32,6 +32,7 @@ typedef struct {
    uint16_t run;        ///< run number, up to 2^16 = 65536
    uint8_t  sub;        ///< sub run number, up to 2^8 = 256
    uint8_t  ver;        ///< binary format version number, up to 2^8 = 256
+   uint32_t trgMask;    ///< trigger mask and coincidence window
    uint32_t tsec;       ///< time from OS in second
    uint32_t tus;        ///< time from OS in micro second
    uint32_t ns;         ///< number of samples in each wf
@@ -42,7 +43,6 @@ typedef struct {
    unsigned exTrgSrc:1; ///< external trigger source: 0 - TTL, 1 - NIM
    unsigned post:    7; ///< percentage of wf after trg, 0 ~ 100
    unsigned reserved:14;
-   uint32_t trgMask;    ///< trigger mask and coincidence window
    uint16_t thr[Nch];   ///< 0 ~ 2^10-1
    uint16_t offset[Nch];///< 16-bit DC offset
 } RUN_CFG_t;
