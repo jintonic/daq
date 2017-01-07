@@ -15,11 +15,11 @@
 typedef enum { TTL, NIM, } TRG_SRC_t; ///< Source of trigger signal
 
 typedef struct {
-   uint32_t size;///< size of event header + size of data
-   int32_t cnt; ///< trigger counter
-   int32_t ttt; ///< trigger time tag, up to (8 ns)*(2^31-1)
-   uint8_t type; ///< 0: run config, 1: real event
-   unsigned reserved:24;
+   uint32_t size;  ///< size of event header + size of data
+   int32_t cnt;    ///< trigger counter
+   unsigned ttt:31;///< trigger time tag, up to (8 ns)*(2^31-1)
+   unsigned type:1;///< 0: run config, 1: real event
+   int reserved;
 } EVT_HDR_t; ///< Event header
 
 /**
