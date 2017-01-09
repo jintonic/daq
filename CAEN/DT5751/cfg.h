@@ -41,7 +41,8 @@ typedef struct {
    unsigned exTrgMod:2; ///< external trigger mode: CAEN_DGTZ_TriggerMode_t
    unsigned exTrgSrc:1; ///< external trigger source: 0 - TTL, 1 - NIM
    unsigned post:    7; ///< percentage of wf after trg, 0 ~ 100
-   unsigned reserved:14;
+   unsigned polarity:4; ///< trg polarity for each channel (each bit)
+   unsigned reserved:10;
    uint32_t trgMask;    ///< trigger mask and coincidence window
    uint16_t thr[Nch];   ///< 0 ~ 2^10-1
    uint16_t offset[Nch];///< 16-bit DC offset
