@@ -15,11 +15,11 @@
 typedef enum { TTL, NIM, } TRG_SRC_t; ///< Source of trigger signal
 
 typedef struct {
-   uint32_t size;///< size of event header + size of data
-   int32_t cnt; ///< trigger counter
-   int32_t ttt; ///< trigger time tag, up to (8 ns)*(2^31-1)
-   uint8_t type; ///< 0: run config, 1: real event
-   unsigned reserved:24;
+   uint32_t size;  ///< size of event header + size of data
+   int32_t cnt;    ///< trigger counter
+   unsigned ttt:31;///< trigger time tag, up to (8 ns)*(2^31-1)
+   unsigned type:1;///< 0: run config, 1: real event
+   int reserved;
 } EVT_HDR_t; ///< Event header
 
 /**
@@ -32,6 +32,7 @@ typedef struct {
    uint16_t run;        ///< run number, up to 2^16 = 65536
    uint8_t  sub;        ///< sub run number, up to 2^8 = 256
    uint8_t  ver;        ///< binary format version number, up to 2^8 = 256
+   uint32_t trgMask;    ///< trigger mask and coincidence window
    uint32_t tsec;       ///< time from OS in second
    uint32_t tus;        ///< time from OS in micro second
    uint32_t ns;         ///< number of samples in each wf
@@ -43,7 +44,6 @@ typedef struct {
    unsigned post:    7; ///< percentage of wf after trg, 0 ~ 100
    unsigned polarity:4; ///< trg polarity for each channel (each bit)
    unsigned reserved:10;
-   uint32_t trgMask;    ///< trigger mask and coincidence window
    uint16_t thr[Nch];   ///< 0 ~ 2^10-1
    uint16_t offset[Nch];///< 16-bit DC offset
 } RUN_CFG_t;

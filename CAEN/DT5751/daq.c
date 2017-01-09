@@ -38,6 +38,14 @@ int main(int argc, char* argv[])
   printf("ROC FPGA Release is %s\n", board.ROC_FirmwareRel);
   printf("AMC FPGA Release is %s\n", board.AMC_FirmwareRel);
 
+  // calibrate board
+  err = CAENDGTZ_API CAEN_DGTZ_Calibrate(dt5751);
+  if (err) { 
+    printf("Can't calibrate board! Abort.\n");
+    CAEN_DGTZ_CloseDigitizer(dt5751);
+    return 1;
+  }
+
   // load configurations
   printf("Parse %s\n", argv[1]);
   FILE *fcfg = fopen(argv[1],"r");
@@ -61,13 +69,15 @@ int main(int argc, char* argv[])
   err |= CAEN_DGTZ_SetSWTriggerMode(dt5751,cfg.swTrgMod);
   err |= CAEN_DGTZ_SetChannelSelfTrigger(dt5751,cfg.chTrgMod,cfg.trgMask);
   // configure individual channels
-  int ich /* channel index */, Non=0 /* number of channels turned on */;
+  int ich /* channel index */;
   for (ich=0; ich<Nch; ich++) {
-    if ((cfg.mask & (1<<ich))>>ich) Non++;
-    err |= CAEN_DGTZ_SetTriggerPolarity(
-	dt5751,ich,CAEN_DGTZ_TriggerOnFallingEdge);
     err |= CAEN_DGTZ_SetChannelDCOffset(dt5751,ich,cfg.offset[ich]);
     err |= CAEN_DGTZ_SetChannelTriggerThreshold(dt5751,ich,cfg.thr[ich]);
+    if ((cfg.polarity>>ich) & 0x1) err |= CAEN_DGTZ_SetTriggerPolarity(
+	dt5751,ich,CAEN_DGTZ_TriggerOnFallingEdge);
+    else err |= CAEN_DGTZ_SetTriggerPolarity(
+	dt5751,ich,CAEN_DGTZ_TriggerOnRisingEdge);
+    printf("ch %d, offset: %d, threshold: %d, polarity: %d\n",ich, cfg.offset[ich], cfg.thr[ich],((cfg.polarity>>ich) & 0x1));
   }
   if (err) { 
     printf("Can't configure board! Abort.\n");
@@ -114,7 +124,7 @@ int main(int argc, char* argv[])
   hdr.cnt=0; hdr.ttt=0; hdr.type=0;
   fwrite(&hdr,1,sizeof(EVT_HDR_t),output);
   fwrite(&cfg,1,sizeof(RUN_CFG_t),output);
-  
+
   // record start time
   int now, tpre = now = cfg.tsec*1000 + cfg.tus/1000, dt, runtime=0;
 
@@ -122,14 +132,18 @@ int main(int argc, char* argv[])
   int i, nEvtTot=0, nNeeded = 16777216, nEvtIn5sec=0; uint32_t nEvtInBuf;
   if (argc==4) nNeeded=atoi(argv[3]);
   uint32_t bsize, fsize=0;
-  while (nEvtTot<nNeeded && !interrupted) {
-    // send software trigger as fast as possible
+  while (nEvtTot<=nNeeded && !interrupted) {
+    // send 1 kHz software trigger to the board for "maxNevt" times
     if (cfg.swTrgMod!=CAEN_DGTZ_TRGMODE_DISABLED)
+      for (i=0; i<maxNevt; i++) {
 	CAEN_DGTZ_SendSWtrigger(dt5751);
+	nanosleep((const struct timespec[]){{0, 1000000L}}, NULL);
+      }
+    printf("%d events\n", nEvtTot);
 
-    // read data from board (it won't do anything if the total number of events
-    // in a block is less than the requested number of events for a single
-    // block transfer)
+    // read data from board (If there are less than maxNevt events on board,
+    // every event is read. If there are more than maxNevt events, only maxNevt
+    // events is read.)
     CAEN_DGTZ_ReadMode_t rMode=CAEN_DGTZ_SLAVE_TERMINATED_READOUT_MBLT;
     err = CAEN_DGTZ_ReadData(dt5751,rMode,buffer,&bsize);
     if (err) {
@@ -137,9 +151,11 @@ int main(int argc, char* argv[])
       break;
     }
     fsize += bsize;
+    printf("after read data\n");
 
     // write data to file
     CAEN_DGTZ_GetNumEvents(dt5751,buffer,bsize,&nEvtInBuf);
+    printf("nEvtInBuf: %d\n", nEvtInBuf);
     for (i=0; i<nEvtInBuf; i++) {
       char *evt = NULL;
       CAEN_DGTZ_EventInfo_t info;
@@ -152,8 +168,9 @@ int main(int argc, char* argv[])
       fwrite(evt,1,info.EventSize,output);
 
       nEvtTot++; nEvtIn5sec++;
-      if (nEvtTot>=nNeeded) break;
+      if (nEvtTot>nNeeded) break;
     }
+    printf("after write data\n");
 
     // display progress every 5 seconds
     struct timeval tv;
@@ -170,6 +187,7 @@ int main(int argc, char* argv[])
       tpre=now;
       nEvtIn5sec=0;
     }
+    printf("after print progress\n");
 
     // start a new sub run when previous file is over 1GB
     if (fsize>1024*1024*1024) {
@@ -189,6 +207,7 @@ int main(int argc, char* argv[])
       fwrite(&hdr,1,sizeof(EVT_HDR_t),output);
       fwrite(&cfg,1,sizeof(RUN_CFG_t),output);
     }
+    printf("after start sub\n");
   }
 
   printf("\nClose output file %s\n", fname);

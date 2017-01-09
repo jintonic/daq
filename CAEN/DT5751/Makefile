@@ -19,8 +19,11 @@ DEP=$(SRC:.c=.d)
 
 #------------------------------------------------------------------------------
 
-# create executable
+# create executables
 daq.exe: $(OBJ)
+	$(CC) $(CFLAGS) -o $@ $^ $(CAENLIB) -lCAENDigitizer
+
+calibrate.exe: calibrate.c
 	$(CC) $(CFLAGS) -o $@ $^ $(CAENLIB) -lCAENDigitizer
 
 # include *.d files, which are makefiles defining dependencies between files

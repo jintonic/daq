@@ -26,6 +26,7 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
   cfg->chTrgMod=CAEN_DGTZ_TRGMODE_ACQ_ONLY;
   cfg->exTrgSrc=TTL;
   cfg->post=75;
+  cfg->polarity=0xf; // trigger on falling edge
   cfg->trgMask=0x0; // trigger on none of the channels
   for (i=0; i<Nch; i++) {
     cfg->thr[i]=500;
@@ -162,7 +163,7 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
       read = fscanf(fcfg, "%s", option);
       for(i=0; option[i]; i++) option[i] = tolower(option[i]);
       if (strcmp(option, "yes")==0) {
-	if (ch == -1) cfg->trgMask = 0xF;
+	if (ch == -1) cfg->trgMask = 0xf;
 	else cfg->trgMask |= (1 << ch);
 	continue;
       } else if (strcmp(option, "no")==0) {
@@ -171,6 +172,24 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
 	continue;
       } else {
 	printf("%s: invalid option to enable channel trigger\n", option);
+      }
+      continue;
+    }
+
+    // channel trigger polarity
+    if (strstr(setting, "channel_trigger_polarity")!=NULL) {
+      read = fscanf(fcfg, "%s", option);
+      for(i=0; option[i]; i++) option[i] = tolower(option[i]);
+      if (strcmp(option, "negative")==0) {
+	if (ch==-1) cfg->polarity = 0xf;
+	else cfg->polarity |= (1<<ch);
+	continue;
+      } else if (strcmp(option, "positive")==0) {
+	if (ch==-1) cfg->polarity = 0x0;
+	else cfg->polarity &= ~(1<<ch);
+	continue;
+      } else {
+	printf("%s: invalid trigger polarity\n", option);
       }
       continue;
     }
