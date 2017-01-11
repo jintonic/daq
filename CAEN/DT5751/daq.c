@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
   printf("AMC FPGA Release is %s\n", board.AMC_FirmwareRel);
 
   // calibrate board
-  err = CAENDGTZ_API CAEN_DGTZ_Calibrate(dt5751);
+  err = CAEN_DGTZ_Calibrate(dt5751);
   if (err) { 
     printf("Can't calibrate board! Abort.\n");
     CAEN_DGTZ_CloseDigitizer(dt5751);
@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
   fclose(fcfg);
 
   // global settings
-  uint16_t maxNevt=512; // max number of events for each block transfer
+  uint16_t maxNevt=1; // max number of events for each block transfer
   err |= CAEN_DGTZ_Reset(dt5751);
   err |= CAEN_DGTZ_SetRecordLength(dt5751,cfg.ns);
   err |= CAEN_DGTZ_SetPostTriggerSize(dt5751,cfg.post);
@@ -62,10 +62,7 @@ int main(int argc, char* argv[])
   err |= CAEN_DGTZ_SetAcquisitionMode(dt5751,CAEN_DGTZ_SW_CONTROLLED);
   err |= CAEN_DGTZ_SetChannelEnableMask(dt5751,cfg.mask);
   err |= CAEN_DGTZ_SetExtTriggerInputMode(dt5751,cfg.exTrgMod);
-  if (cfg.exTrgSrc==TTL)
-    err |= CAEN_DGTZ_SetIOLevel(dt5751,CAEN_DGTZ_IOLevel_TTL);
-  else 
-    err |= CAEN_DGTZ_SetIOLevel(dt5751,CAEN_DGTZ_IOLevel_NIM);
+  err |= CAEN_DGTZ_SetIOLevel(dt5751,cfg.exTrgSrc);
   err |= CAEN_DGTZ_SetSWTriggerMode(dt5751,cfg.swTrgMod);
   err |= CAEN_DGTZ_SetChannelSelfTrigger(dt5751,cfg.chTrgMod,cfg.trgMask);
   // configure individual channels
@@ -159,7 +156,9 @@ int main(int argc, char* argv[])
     for (i=0; i<nEvtInBuf; i++) {
       char *evt = NULL;
       CAEN_DGTZ_EventInfo_t info;
+      printf("i: %d\n", i);
       CAEN_DGTZ_GetEventInfo(dt5751,buffer,bsize,i,&info,&evt);
+      printf("i: %d, bsize: %d\n", i, bsize);
       EVT_HDR_t *header = (EVT_HDR_t*) evt; // update event header
       header->size=info.EventSize;
       header->cnt=info.EventCounter;

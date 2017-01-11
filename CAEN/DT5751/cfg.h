@@ -12,8 +12,6 @@
 #define VERSION (0) ///< versin of binary data structure
 #endif
 
-typedef enum { TTL, NIM, } TRG_SRC_t; ///< Source of trigger signal
-
 typedef struct {
    uint32_t size;  ///< size of event header + size of data
    int32_t cnt;    ///< trigger counter
@@ -40,7 +38,7 @@ typedef struct {
    unsigned swTrgMod:2; ///< software trigger mode: CAEN_DGTZ_TriggerMode_t
    unsigned chTrgMod:2; ///< internal trigger mode: CAEN_DGTZ_TriggerMode_t
    unsigned exTrgMod:2; ///< external trigger mode: CAEN_DGTZ_TriggerMode_t
-   unsigned exTrgSrc:1; ///< external trigger source: 0 - TTL, 1 - NIM
+   unsigned exTrgSrc:1; ///< external trigger source: 0 - NIM, 1 - TTL
    unsigned post:    7; ///< percentage of wf after trg, 0 ~ 100
    unsigned polarity:4; ///< trg polarity for each channel (each bit)
    unsigned reserved:10;

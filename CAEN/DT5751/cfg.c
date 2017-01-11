@@ -24,7 +24,7 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
   cfg->swTrgMod=CAEN_DGTZ_TRGMODE_DISABLED;
   cfg->exTrgMod=CAEN_DGTZ_TRGMODE_DISABLED;
   cfg->chTrgMod=CAEN_DGTZ_TRGMODE_ACQ_ONLY;
-  cfg->exTrgSrc=TTL;
+  cfg->exTrgSrc=CAEN_DGTZ_IOLevel_TTL;
   cfg->post=75;
   cfg->polarity=0xf; // trigger on falling edge
   cfg->trgMask=0x0; // trigger on none of the channels
@@ -134,9 +134,9 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
       read = fscanf(fcfg, "%s", option);
       for(i=0; option[i]; i++) option[i] = toupper(option[i]);
       if (strcmp(option, "TTL")==0)
-	cfg->exTrgSrc=TTL;
+	cfg->exTrgSrc=CAEN_DGTZ_IOLevel_TTL;
       else if (strcmp(option, "NIM")==0)
-	cfg->exTrgSrc=NIM;
+	cfg->exTrgSrc=CAEN_DGTZ_IOLevel_NIM;
       else
 	printf("%s: invalid trigger source\n", option);
       continue;
