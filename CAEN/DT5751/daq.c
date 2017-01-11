@@ -70,11 +70,9 @@ int main(int argc, char* argv[])
   for (ich=0; ich<Nch; ich++) {
     err |= CAEN_DGTZ_SetChannelDCOffset(dt5751,ich,cfg.offset[ich]);
     err |= CAEN_DGTZ_SetChannelTriggerThreshold(dt5751,ich,cfg.thr[ich]);
-    if ((cfg.polarity>>ich) & 0x1) err |= CAEN_DGTZ_SetTriggerPolarity(
-	dt5751,ich,CAEN_DGTZ_TriggerOnFallingEdge);
-    else err |= CAEN_DGTZ_SetTriggerPolarity(
-	dt5751,ich,CAEN_DGTZ_TriggerOnRisingEdge);
-    printf("ch %d, offset: %d, threshold: %d, polarity: %d\n",ich, cfg.offset[ich], cfg.thr[ich],((cfg.polarity>>ich) & 0x1));
+    err |= CAEN_DGTZ_SetTriggerPolarity(dt5751,ich,(cfg.polarity>>ich)&0x1);
+    printf("ch %d, offset: %d, threshold: %d, polarity: %d\n",
+	ich, cfg.offset[ich], cfg.thr[ich],((cfg.polarity>>ich) & 0x1));
   }
   if (err) { 
     printf("Can't configure board! Abort.\n");
