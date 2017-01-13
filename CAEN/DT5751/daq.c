@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
   fclose(fcfg);
 
   // global settings
-  uint16_t maxNevt=1; // max number of events for each block transfer
+  uint16_t maxNevt=256; // max number of events for each block transfer
   err |= CAEN_DGTZ_Reset(dt5751);
   err |= CAEN_DGTZ_SetRecordLength(dt5751,cfg.ns);
   err |= CAEN_DGTZ_SetPostTriggerSize(dt5751,cfg.post);
@@ -75,11 +75,11 @@ int main(int argc, char* argv[])
 	ich, cfg.offset[ich], cfg.thr[ich],((cfg.polarity>>ich) & 0x1));
   }
   if (err) { 
-    printf("Can't configure board! Abort.\n");
+    printf("Can't configure board! Abort with error code %d.\n",err);
     CAEN_DGTZ_CloseDigitizer(dt5751);
     return 1;
   }
-  sleep(1);
+  nanosleep((const struct timespec[]){{0, 1e8L}}, NULL); // 0.1 second
 
   // allocate memory for data taking
   char *buffer = NULL; uint32_t bytes;
@@ -124,7 +124,7 @@ int main(int argc, char* argv[])
   int now, tpre = now = cfg.tsec*1000 + cfg.tus/1000, dt, runtime=0;
 
   // output loop
-  int i, nEvtTot=0, nNeeded = 16777216, nEvtIn5sec=0; uint32_t nEvtInBuf;
+  int i, nEvtTot=0, nNeeded = 16777216, nEvtIn5sec=0; uint32_t nEvtOnBoard;
   if (argc==4) nNeeded=atoi(argv[3]);
   uint32_t bsize, fsize=0;
   while (nEvtTot<=nNeeded && !interrupted) {
@@ -132,13 +132,17 @@ int main(int argc, char* argv[])
     if (cfg.swTrgMod!=CAEN_DGTZ_TRGMODE_DISABLED)
       for (i=0; i<maxNevt; i++) {
 	CAEN_DGTZ_SendSWtrigger(dt5751);
-	nanosleep((const struct timespec[]){{0, 1000000L}}, NULL);
+	nanosleep((const struct timespec[]){{0, 1e6L}}, NULL);
       }
-    printf("%d events\n", nEvtTot);
 
-    // read data from board (If there are less than maxNevt events on board,
-    // every event is read. If there are more than maxNevt events, only maxNevt
-    // events is read.)
+    // get number of events on board every 10 micro second
+    CAEN_DGTZ_ReadRegister(dt5751, 0x812C, &nEvtOnBoard);
+    if (nEvtOnBoard<(maxNevt?nNeeded:maxNevt<nNeeded)) {
+      nanosleep((const struct timespec[]){{0, 1e4L}}, NULL);
+      continue;
+    }
+
+    // read data from board
     CAEN_DGTZ_ReadMode_t rMode=CAEN_DGTZ_SLAVE_TERMINATED_READOUT_MBLT;
     err = CAEN_DGTZ_ReadData(dt5751,rMode,buffer,&bsize);
     if (err) {
@@ -146,17 +150,13 @@ int main(int argc, char* argv[])
       break;
     }
     fsize += bsize;
-    printf("after read data\n");
 
     // write data to file
-    CAEN_DGTZ_GetNumEvents(dt5751,buffer,bsize,&nEvtInBuf);
-    printf("nEvtInBuf: %d\n", nEvtInBuf);
-    for (i=0; i<nEvtInBuf; i++) {
+    CAEN_DGTZ_GetNumEvents(dt5751,buffer,bsize,&nEvtOnBoard);
+    for (i=0; i<nEvtOnBoard; i++) {
       char *evt = NULL;
       CAEN_DGTZ_EventInfo_t info;
-      printf("i: %d\n", i);
       CAEN_DGTZ_GetEventInfo(dt5751,buffer,bsize,i,&info,&evt);
-      printf("i: %d, bsize: %d\n", i, bsize);
       EVT_HDR_t *header = (EVT_HDR_t*) evt; // update event header
       header->size=info.EventSize;
       header->cnt=info.EventCounter;
@@ -167,7 +167,6 @@ int main(int argc, char* argv[])
       nEvtTot++; nEvtIn5sec++;
       if (nEvtTot>nNeeded) break;
     }
-    printf("after write data\n");
 
     // display progress every 5 seconds
     struct timeval tv;
@@ -184,7 +183,6 @@ int main(int argc, char* argv[])
       tpre=now;
       nEvtIn5sec=0;
     }
-    printf("after print progress\n");
 
     // start a new sub run when previous file is over 1GB
     if (fsize>1024*1024*1024) {
@@ -204,7 +202,6 @@ int main(int argc, char* argv[])
       fwrite(&hdr,1,sizeof(EVT_HDR_t),output);
       fwrite(&cfg,1,sizeof(RUN_CFG_t),output);
     }
-    printf("after start sub\n");
   }
 
   printf("\nClose output file %s\n", fname);
