@@ -23,9 +23,6 @@ DEP=$(SRC:.c=.d)
 daq.exe: $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^ $(CAENLIB) -lCAENDigitizer
 
-calibrate.exe: calibrate.c
-	$(CC) $(CFLAGS) -o $@ $^ $(CAENLIB) -lCAENDigitizer
-
 # include *.d files, which are makefiles defining dependencies between files
 ifeq ($(filter clean,$(MAKECMDGOALS)),)
   -include $(DEP)
