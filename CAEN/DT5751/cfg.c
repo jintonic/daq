@@ -12,6 +12,25 @@ void SaveCurrentTime(RUN_CFG_t *cfg)
   cfg->tus = tv.tv_usec;
 }
 
+uint32_t GetDCOffset(int ch, int adc)
+{
+  if (adc<0 || adc>65535) {
+    printf("DC offset %d is not in [0,65535], set to 900\n",adc);
+    adc=900;
+  }
+  // in case of 16-bit DAC input
+  if (adc>1023) return adc;
+  // in case of ADC input
+  float value = 1000;
+  if (ch==0) value = 89607.3-95.0634*adc;
+  if (ch==1) value = 96071-105.486*adc;
+  if (ch==2) value = 102068-119.038*adc;
+  if (ch==3) value = 111593-141.284*adc;
+  if (value<0) value = 1000;
+  if (value>65535) value = 64000;
+  return (uint32_t) value;
+}
+
 int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg) 
 {
   char setting[256], option[256];
@@ -19,18 +38,17 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
 
   // default cfg
   cfg->ver=VERSION;
-  cfg->ns=1024;
-  cfg->mask=0x0;
+  cfg->ns=1001; // 7 x 143
+  cfg->mask=0x0; // disable all channels
   cfg->swTrgMod=CAEN_DGTZ_TRGMODE_DISABLED;
   cfg->exTrgMod=CAEN_DGTZ_TRGMODE_DISABLED;
-  cfg->chTrgMod=CAEN_DGTZ_TRGMODE_ACQ_ONLY;
+  cfg->chTrgMod=CAEN_DGTZ_TRGMODE_DISABLED;
   cfg->exTrgSrc=CAEN_DGTZ_IOLevel_TTL;
   cfg->post=75;
   cfg->polarity=0xf; // trigger on falling edge
   cfg->trgMask=0x0; // trigger on none of the channels
   for (i=0; i<Nch; i++) {
-    cfg->thr[i]=500;
-    cfg->offset[i]=0;
+    cfg->thr[i]=770; cfg->offset[i]=1000;
   }
 
   // parse cfg file
@@ -57,9 +75,10 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
 	continue; 
       }
       sscanf(setting+1, "%d", &parameter);
-      if (parameter < 0 || parameter >= Nch)
+      if (parameter < 0 || parameter >= Nch) {
 	printf("%d: invalid channel number\n", parameter);
-      else
+	return 1;
+      } else
 	ch = parameter;
       continue;
     }
@@ -70,7 +89,7 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
       continue;
     }
 
-    // post trigger (percentage after trigger)
+    // post trigger percentage after trigger
     if (strstr(setting, "post_trigger_percentage")!=NULL) {
       read = fscanf(fcfg, "%d", &post);
       cfg->post=post;
@@ -89,8 +108,10 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
 	cfg->swTrgMod = CAEN_DGTZ_TRGMODE_ACQ_ONLY;
       else if (strcmp(option, "acq_and_extout")==0)
 	cfg->swTrgMod = CAEN_DGTZ_TRGMODE_ACQ_AND_EXTOUT;
-      else
+      else {
 	printf("%s: invalid trigger mode\n", option);
+	return 1;
+      }
       continue;
     }
 
@@ -106,8 +127,10 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
 	cfg->chTrgMod = CAEN_DGTZ_TRGMODE_ACQ_ONLY;
       else if (strcmp(option, "acq_and_extout")==0)
 	cfg->chTrgMod = CAEN_DGTZ_TRGMODE_ACQ_AND_EXTOUT;
-      else 
+      else {
 	printf("%s: invalid internal trigger mode\n", option);
+	return 1;
+      }
 
       continue;
     }
@@ -124,8 +147,10 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
 	cfg->exTrgMod = CAEN_DGTZ_TRGMODE_ACQ_ONLY;
       else if (strcmp(option, "acq_and_extout")==0)
 	cfg->exTrgMod = CAEN_DGTZ_TRGMODE_ACQ_AND_EXTOUT;
-      else
+      else {
 	printf("%s: invalid trigger mode\n", option);
+	return 1;
+      }
       continue;
     }
 
@@ -137,22 +162,24 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
 	cfg->exTrgSrc=CAEN_DGTZ_IOLevel_TTL;
       else if (strcmp(option, "NIM")==0)
 	cfg->exTrgSrc=CAEN_DGTZ_IOLevel_NIM;
-      else
+      else {
 	printf("%s: invalid trigger source\n", option);
+	return 1;
+      }
       continue;
     }
 
     // channel DC offset
     if (strstr(setting, "channel_dc_offset")!=NULL) {
-      read = fscanf(fcfg, "%u", &parameter);
-      if (ch == -1) for(i=0; i<Nch; i++) cfg->offset[i] = parameter;
-      else cfg->offset[ch] = parameter;
+      read = fscanf(fcfg, "%d", &parameter);
+      if (ch==-1) for (i=0;i<Nch;i++) cfg->offset[i]=GetDCOffset(i,parameter);
+      else cfg->offset[ch] = GetDCOffset(ch,parameter);
       continue;
     }
 
     // channel threshold
     if (strstr(setting, "channel_trigger_threshold")!=NULL) {
-      read = fscanf(fcfg, "%u", &parameter);
+      read = fscanf(fcfg, "%d", &parameter);
       if (ch == -1) for(i=0; i<Nch; i++) cfg->thr[i] = parameter;
       else cfg->thr[ch] = parameter;
       continue;
@@ -190,6 +217,7 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
 	continue;
       } else {
 	printf("%s: invalid trigger polarity\n", option);
+	return 1;
       }
       continue;
     }
@@ -208,13 +236,14 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
 	continue;
       } else {
 	printf("%s: invalid option to enable channel recording\n", option);
+	return 1;
       }
       continue;
     }
 
     // coincidence window
     if (strstr(setting, "coincidence_window")!=NULL) {
-      read = fscanf(fcfg, "%u", &parameter);
+      read = fscanf(fcfg, "%d", &parameter);
       if (parameter < 16) cfg->trgMask |= (parameter << 20);
       else printf("%d: invalid coincidence window\n",parameter);
       continue;
@@ -222,13 +251,14 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
 
     // coincidence level
     if (strstr(setting, "coincidence_level")!=NULL) {
-      read = fscanf(fcfg, "%u", &parameter);
+      read = fscanf(fcfg, "%d", &parameter);
       if (parameter < 16) cfg->trgMask |= (parameter << 24);
       else printf("%d: invalid coincidence level\n",parameter);
       continue;
     }
 
     printf("%s: invalid setting\n", setting);
+    return 1;
   }
   return 0;
 }
