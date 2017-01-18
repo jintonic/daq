@@ -21,13 +21,11 @@ uint32_t GetDCOffset(int ch, int adc)
   // in case of 16-bit DAC input
   if (adc>1023) return adc;
   // in case of ADC input
-  float value = 1000;
-  if (ch==0) value = 89607.3-95.0634*adc;
-  if (ch==1) value = 96071-105.486*adc;
-  if (ch==2) value = 102068-119.038*adc;
-  if (ch==3) value = 111593-141.284*adc;
-  if (value<0) value = 1000;
-  if (value>65535) value = 64000;
+  float value = 10000;
+  if (ch==0) value = 83501.9-85.1395*adc;
+  if (ch==1) value = 87099.6-90.9662*adc;
+  if (ch==2) value = 91393.4-101.365*adc;
+  if (ch==3) value = 89318.9-101.752*adc;
   return (uint32_t) value;
 }
 
