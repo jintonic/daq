@@ -22,10 +22,14 @@ uint32_t GetDCOffset(int ch, int adc)
   if (adc>1023) return adc;
   // in case of ADC input
   float value = 10000;
-  if (ch==0) value = 83501.9-85.1395*adc;
-  if (ch==1) value = 87099.6-90.9662*adc;
-  if (ch==2) value = 91393.4-101.365*adc;
-  if (ch==3) value = 89318.9-101.752*adc;
+  if (ch==0) value = 67056.7-57.7726*adc;
+  if (ch==1) value = 67116.9-57.6586*adc;
+  if (ch==2) value = 66947.3-57.8657*adc;
+  if (ch==3) value = 64187.5-56.7862*adc;
+  if (value<0 || value>65535) {
+    printf("DC offset value %.0f is out of range. Set it to 10000.\n", value);
+    value=10000;
+  }
   return (uint32_t) value;
 }
 
