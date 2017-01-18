@@ -1,6 +1,6 @@
 #!/bin/sh
 # take data for DC offset calibration
-val=3000
+val=10000
 run=0
 while [[ $val -lt 65536 ]]; do
   cfg=`printf "run_%06d.000001.cfg" $run`
