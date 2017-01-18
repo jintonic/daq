@@ -82,6 +82,7 @@ int main(int argc, char* argv[])
     printf("Can't configure board! Quit with error code %d.\n", err);
     goto quit;
   }
+  sleep(1); // wait till baseline get stable
 
   // allocate memory for data taking
   char *buffer = NULL; uint32_t bytes;
