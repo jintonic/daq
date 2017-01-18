@@ -18,11 +18,11 @@ typedef struct {
    unsigned ttt:31;///< trigger time tag, up to (8 ns)*(2^31-1)
    unsigned type:1;///< 0: run config, 1: real event
    int reserved;
-} EVT_HDR_t; ///< Event header
+} EVT_HDR_t; ///< Event header. 32 bits x 4
 
 /**
  * Run configurations.
- * It is 10 words long and is saved as the first and last events of a run.
+ * It is 32 x 10 bits long and is saved as the first and last events of a run.
  * RUN_CFG_t::trgMask is explained in DT5751 User's Manual:
  * http://www.caen.it/servlet/checkCaenManualFile?Id=11299
  */
