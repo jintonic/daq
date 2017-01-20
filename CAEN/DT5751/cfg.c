@@ -88,6 +88,11 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
     // number of waveform samples
     if (strstr(setting, "number_of_samples")!=NULL) {
       read = fscanf(fcfg, "%u", &cfg->ns);
+      if (cfg->ns%7==0) continue;
+      printf("Number of samples %d is not divisible by 7,",cfg->ns);
+      if (cfg->ns%7<4) cfg->ns=cfg->ns/7*7;
+      else cfg->ns=(cfg->ns/7+1)*7;
+      printf("rounded to %d\n", cfg->ns);
       continue;
     }
 
