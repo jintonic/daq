@@ -16,7 +16,7 @@ $(EXES):%.exe:%.c lib$(NAME).so
 	@echo $@ created
 
 lib$(NAME).so: $(OBJS)
-	$(CC) $(CFLAGS) -shared -o $@ $^ -lc -lm
+	$(CC) $(CFLAGS) -shared -o $@ $^ -lc -lm -lhidapi-libusb -lusb-1.0
 	@echo $@ created
 
 ifeq ($(filter install uninstall clean, $(MAKECMDGOALS)),)
