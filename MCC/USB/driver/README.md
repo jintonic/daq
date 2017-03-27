@@ -19,3 +19,8 @@ or put the following line to your `~/.profile` as a normal user
 export LD_LIBRARY_PATH=/path/to/libmccusb.so:$LD_LIBARY_PATH
 ```
 
+Use the following command to check if the shared library has all the syblinks to its dependencies:
+
+```
+ldd libmccusb.so
+```
