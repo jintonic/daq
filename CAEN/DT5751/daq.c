@@ -12,8 +12,13 @@
 volatile sig_atomic_t interrupted = 0;
 void ctrl_c_pressed(int sig) { interrupted = 1; }
 
+
 int main(int argc, char* argv[])
 {
+  if (argc<3) {
+    printf("Usage: ./daq.exe daq.cfg run_num [num_of_evt_to_be_taken]\n");
+    return 1;
+  }
   signal(SIGINT, ctrl_c_pressed); // handle Ctrl-C
 
   // connect to digitizer
@@ -50,6 +55,7 @@ int main(int argc, char* argv[])
   // load configurations
   printf("\nParse %s\n", argv[1]);
   FILE *fcfg = fopen(argv[1],"r");
+  if (!fcfg) { printf("cannot open %s, quit\n",argv[1]); goto quit; }
   RUN_CFG_t cfg;
   CAEN_DGTZ_ErrorCode err = CAEN_DGTZ_Success;
   err = ParseConfigFile(fcfg, &cfg);
@@ -68,14 +74,14 @@ int main(int argc, char* argv[])
   err |= CAEN_DGTZ_SetSWTriggerMode(dt5751,cfg.swTrgMod);
   err |= CAEN_DGTZ_SetChannelEnableMask(dt5751,cfg.mask);
   err |= CAEN_DGTZ_SetChannelSelfTrigger(dt5751,cfg.chTrgMod,cfg.trgMask);
-  printf("ch offset threshold polarity trigger\n");
+  printf("ch offset threshold polarity trigger record\n");
   for (ich=0; ich<Nch; ich++) { // configure individual channels
-    if (cfg.mask & (1<<ich)) {
+    if (cfg.trgMask & (1<<ich) || cfg.mask & (1<<ich)) {
       err |= CAEN_DGTZ_SetChannelDCOffset(dt5751,ich,cfg.offset[ich]);
       err |= CAEN_DGTZ_SetChannelTriggerThreshold(dt5751,ich,cfg.thr[ich]);
       err |= CAEN_DGTZ_SetTriggerPolarity(dt5751,ich,cfg.polarity>>ich&1);
-      printf("%d %6d %8d %7d %7d\n", ich, cfg.offset[ich],
-	  cfg.thr[ich], cfg.polarity>>ich&1, cfg.trgMask>>ich&1);
+      printf("%d %6d %8d %7d %7d %7d\n", ich, cfg.offset[ich], cfg.thr[ich],
+	  cfg.polarity>>ich&1, cfg.trgMask>>ich&1, cfg.mask>>ich&1);
     }
   }
   if (err) { 
