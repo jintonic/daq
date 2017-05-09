@@ -22,10 +22,10 @@ uint32_t GetDCOffset(int ch, int adc)
   if (adc>1023) return adc;
   // in case of ADC input
   float value = 10000;
-  if (ch==0) value = 67056.7-57.7726*adc;
-  if (ch==1) value = 67116.9-57.6586*adc;
-  if (ch==2) value = 66947.3-57.8657*adc;
-  if (ch==3) value = 64187.5-56.7862*adc;
+  if (ch==0) value = 63877.9-56.6*adc;
+  if (ch==1) value = 67140.9-57.7*adc;
+  if (ch==2) value = 67298.4-58.2*adc;
+  if (ch==3) value = 67563.2-58.1*adc;
   if (value<0 || value>65535) {
     printf("DC offset value %.0f is out of range. Set it to 10000.\n", value);
     value=10000;
@@ -197,11 +197,11 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
       read = fscanf(fcfg, "%s", option);
       for(i=0; option[i]; i++) option[i] = tolower(option[i]);
       if (strcmp(option, "yes")==0) {
-	if (ch == -1) cfg->trgMask = 0xf;
+	if (ch == -1) for (i=0; i<4; i++) cfg->trgMask |= (1 << ch);
 	else cfg->trgMask |= (1 << ch);
 	continue;
       } else if (strcmp(option, "no")==0) {
-	if (ch == -1) cfg->trgMask = 0x0;
+	if (ch == -1) for (i=0; i<4; i++) cfg->trgMask &= ~(1 << ch);
 	else cfg->trgMask &= ~(1 << ch);
 	continue;
       } else {
@@ -253,6 +253,8 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
       read = fscanf(fcfg, "%d", &parameter);
       if (parameter < 16) cfg->trgMask |= (parameter << 20);
       else printf("%d: invalid coincidence window\n",parameter);
+      if (parameter==0) printf("trigger coincidence window: 1 ns\n");
+      else printf("trigger coincidence window: %d ns\n",parameter*16);
       continue;
     }
 
@@ -261,6 +263,7 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
       read = fscanf(fcfg, "%d", &parameter);
       if (parameter < 16) cfg->trgMask |= (parameter << 24);
       else printf("%d: invalid coincidence level\n",parameter);
+      printf("trigger coincidence level: >= %d channels\n",parameter+1);
       continue;
     }
 
