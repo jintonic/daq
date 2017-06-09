@@ -29,7 +29,7 @@ int main(int argc, char* argv[])
   }
 
   // get board info
-  CAEN_DGTZ_BoardInfo_t board; CAEN_DGTZ_EventInfo_t info;
+  CAEN_DGTZ_BoardInfo_t board;
   if (CAEN_DGTZ_GetInfo(dt5751, &board)) { 
     printf("Can't get board info! Quit.\n");
     goto quit;
@@ -148,6 +148,7 @@ int main(int argc, char* argv[])
     // write data to file
     CAEN_DGTZ_GetNumEvents(dt5751,buffer,bsize,&nEvtOnBoard);
     for (i=0; i<nEvtOnBoard; i++) {
+      CAEN_DGTZ_EventInfo_t info;
       CAEN_DGTZ_GetEventInfo(dt5751,buffer,bsize,i,&info,&evt);
       EVT_HDR_t *header = (EVT_HDR_t*) evt; // update event header
       header->size=info.EventSize;
