@@ -19,9 +19,14 @@ cd $NICEDAT/$subdir
 file=`ls -1 run_??????.000001 | tail -1`
 six=${file:4:6}
 run=`expr $six + 1`
+# create a new subdir every 100 run
+if [ `expr $run%100|bc` -eq 0 ]; then
+  subdir=`printf %06d $run`
+  mkdir -p $NICEDAT/$subdir
+  cd $NICEDAT/$subdir
+fi
 
 # ask user to specify run number
-echo "The last run file: $NICEDAT/$subdir/$file"
 echo "Type <Enter> to start run $run, or"
 echo "an integer in [1, $run) to overwrite an old run:"
 read -e -n ${#run} input
