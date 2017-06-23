@@ -49,9 +49,7 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
   cfg->post=75;
   cfg->polarity=0xf; // trigger on falling edge
   cfg->trgMask=0x0; // trigger on none of the channels
-  for (i=0; i<Nch; i++) {
-    cfg->thr[i]=770; cfg->offset[i]=1000;
-  }
+  for (i=0; i<Nch; i++) { cfg->thr[i]=770; cfg->offset[i]=1000; }
 
   // parse cfg file
   while (!feof(fcfg)) {
@@ -59,7 +57,7 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
     int read = fscanf(fcfg, "%s", setting);
 
     // skip empty lines
-    if(!read || !strlen(setting)) continue;
+    if(read<=0 || !strlen(setting)) continue;
 
     // skip comments
     if(setting[0] == '#') {
@@ -84,11 +82,12 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
 	ch = parameter;
       continue;
     }
+    printf(" %s: ",setting);
 
     // number of waveform samples
     if (strstr(setting, "number_of_samples")!=NULL) {
       read = fscanf(fcfg, "%u", &cfg->ns);
-      if (cfg->ns%7==0) continue;
+      if (cfg->ns%7==0) { printf("%d\n",cfg->ns); continue; }
       printf("Number of samples %d is not divisible by 7,",cfg->ns);
       if (cfg->ns%7<4) cfg->ns=cfg->ns/7*7;
       else cfg->ns=(cfg->ns/7+1)*7;
@@ -100,6 +99,7 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
     if (strstr(setting, "post_trigger_percentage")!=NULL) {
       read = fscanf(fcfg, "%d", &post);
       cfg->post=post;
+      printf("%d\n", cfg->post);
       continue;
     }
 
@@ -119,6 +119,7 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
 	printf("%s: invalid trigger mode\n", option);
 	return 1;
       }
+      printf("%d\n", cfg->swTrgMod);
       continue;
     }
 
@@ -138,7 +139,7 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
 	printf("%s: invalid internal trigger mode\n", option);
 	return 1;
       }
-
+      printf("%d\n", cfg->chTrgMod);
       continue;
     }
 
@@ -158,6 +159,7 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
 	printf("%s: invalid trigger mode\n", option);
 	return 1;
       }
+      printf("%d\n", cfg->exTrgMod);
       continue;
     }
 
@@ -173,78 +175,96 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
 	printf("%s: invalid trigger source\n", option);
 	return 1;
       }
+      printf("%d\n", cfg->exTrgSrc);
       continue;
     }
 
     // channel DC offset
     if (strstr(setting, "channel_dc_offset")!=NULL) {
       read = fscanf(fcfg, "%d", &parameter);
-      if (ch==-1) for (i=0;i<Nch;i++) cfg->offset[i]=GetDCOffset(i,parameter);
-      else cfg->offset[ch] = GetDCOffset(ch,parameter);
+      if (ch==-1) {
+	for (i=0;i<Nch;i++) {
+	  cfg->offset[i]=GetDCOffset(i,parameter);
+	  printf("%d(ch %d) ", cfg->offset[i], i);
+	}
+	printf("\n");
+      } else {
+	cfg->offset[ch] = GetDCOffset(ch,parameter);
+	printf("%d(ch %d)\n", cfg->offset[ch], ch);
+      }
       continue;
     }
 
     // channel threshold
     if (strstr(setting, "channel_trigger_threshold")!=NULL) {
       read = fscanf(fcfg, "%d", &parameter);
-      if (ch == -1) for(i=0; i<Nch; i++) cfg->thr[i] = parameter;
-      else cfg->thr[ch] = parameter;
+      if (ch == -1) {
+	for(i=0; i<Nch; i++) {
+	  cfg->thr[i] = parameter;
+	  printf("%d(ch %d) ", cfg->thr[i], i);
+	}
+	printf("\n");
+      } else {
+	cfg->thr[ch] = parameter;
+	printf("%d(ch %d)\n", cfg->thr[ch], ch);
+      }
       continue;
     }
 
     // channel trigger mask (yes/no)
     if (strstr(setting, "channel_enable_trigger")!=NULL) {
       read = fscanf(fcfg, "%s", option);
-      for(i=0; option[i]; i++) option[i] = tolower(option[i]);
+      for(i=0; i<strlen(option); i++) option[i] = tolower(option[i]);
       if (strcmp(option, "yes")==0) {
-	if (ch == -1) for (i=0; i<4; i++) cfg->trgMask |= (1 << ch);
+	if (ch == -1) for (i=0; i<4; i++) cfg->trgMask |= (1 << i);
 	else cfg->trgMask |= (1 << ch);
-	continue;
       } else if (strcmp(option, "no")==0) {
-	if (ch == -1) for (i=0; i<4; i++) cfg->trgMask &= ~(1 << ch);
+	if (ch == -1) for (i=0; i<4; i++) cfg->trgMask &= ~(1 << i);
 	else cfg->trgMask &= ~(1 << ch);
-	continue;
       } else {
 	printf("%s: invalid option to enable channel trigger\n", option);
       }
+      for (i=32; i-->0;) {
+	if ((i+1)%4==0) printf(" ");
+	printf("%d",cfg->trgMask>>i&1);
+      }
+      printf("\n");
       continue;
     }
 
     // channel trigger polarity
     if (strstr(setting, "channel_trigger_polarity")!=NULL) {
       read = fscanf(fcfg, "%s", option);
-      for(i=0; option[i]; i++) option[i] = tolower(option[i]);
+      for(i=0; i<strlen(option); i++) option[i] = tolower(option[i]);
       if (strcmp(option, "negative")==0) {
 	if (ch==-1) cfg->polarity = 0xf;
 	else cfg->polarity |= (1<<ch);
-	continue;
       } else if (strcmp(option, "positive")==0) {
 	if (ch==-1) cfg->polarity = 0x0;
 	else cfg->polarity &= ~(1<<ch);
-	continue;
       } else {
 	printf("%s: invalid trigger polarity\n", option);
 	return 1;
       }
+      for (i=Nch; i-->0;) printf("%d",cfg->polarity>>i&1); printf("\n");
       continue;
     }
 
     // channel recording mask (yes/no)
     if (strstr(setting, "channel_enable_recording")!=NULL) {
       read = fscanf(fcfg, "%s", option);
-      for(i=0; option[i]; i++) option[i] = tolower(option[i]);
+      for(i=0; i<strlen(option); i++) option[i] = tolower(option[i]);
       if (strcmp(option, "yes")==0) {
 	if (ch == -1) cfg->mask = 0xf;
 	else cfg->mask |= (1 << ch);
-	continue;
       } else if (strcmp(option, "no")==0) {
 	if (ch == -1) cfg->mask = 0x0;
 	else cfg->mask &= ~(1 << ch);
-	continue;
       } else {
 	printf("%s: invalid option to enable channel recording\n", option);
 	return 1;
       }
+      for (i=Nch; i-->0;) printf("%d",cfg->mask>>i&1); printf("\n");
       continue;
     }
 
@@ -253,8 +273,8 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
       read = fscanf(fcfg, "%d", &parameter);
       if (parameter < 16) cfg->trgMask |= (parameter << 20);
       else printf("%d: invalid coincidence window\n",parameter);
-      if (parameter==0) printf("trigger coincidence window: 1 ns\n");
-      else printf("trigger coincidence window: %d ns\n",parameter*16);
+      if (parameter==0) printf("1 ns\n");
+      else printf("%d ns\n",parameter*16);
       continue;
     }
 
@@ -263,7 +283,7 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
       read = fscanf(fcfg, "%d", &parameter);
       if (parameter < 16) cfg->trgMask |= (parameter << 24);
       else printf("%d: invalid coincidence level\n",parameter);
-      printf("trigger coincidence level: >= %d channels\n",parameter+1);
+      printf("more than %d channels\n",parameter);
       continue;
     }
 
