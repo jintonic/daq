@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
   err = ParseConfigFile(fcfg, &cfg);
   fclose(fcfg);
   if (err) goto close;
-  else printf("Done.\n\n");
+  else printf("Done.\n");
 
   // global settings
   uint16_t nEvtBLT=1024; // number of events for each block transfer
@@ -64,9 +64,9 @@ int main(int argc, char* argv[])
   err |= CAEN_DGTZ_SetMaxNumEventsBLT(dt5751,nEvtBLT);
   err |= CAEN_DGTZ_SetAcquisitionMode(dt5751,CAEN_DGTZ_SW_CONTROLLED);
   err |= CAEN_DGTZ_SetChannelEnableMask(dt5751,cfg.mask);
-  //err |= CAEN_DGTZ_SetIOLevel(dt5751,cfg.exTrgSrc);
-  //err |= CAEN_DGTZ_SetExtTriggerInputMode(dt5751,cfg.exTrgMod);
-  //err |= CAEN_DGTZ_SetSWTriggerMode(dt5751,cfg.swTrgMod);
+  err |= CAEN_DGTZ_SetIOLevel(dt5751,cfg.exTrgSrc);
+  err |= CAEN_DGTZ_SetExtTriggerInputMode(dt5751,cfg.exTrgMod);
+  err |= CAEN_DGTZ_SetSWTriggerMode(dt5751,cfg.swTrgMod);
   err |= CAEN_DGTZ_SetChannelSelfTrigger(dt5751,cfg.chTrgMod,cfg.trgMask);
   for (ich=0; ich<Nch; ich++) { // configure individual channels
     err |= CAEN_DGTZ_SetChannelDCOffset(dt5751,ich,cfg.offset[ich]);
