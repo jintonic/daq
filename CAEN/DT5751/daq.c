@@ -22,7 +22,8 @@ int main(int argc, char* argv[])
 
   // connect to digitizer
   int dt5751; CAEN_DGTZ_ErrorCode err = CAEN_DGTZ_Success;
-  err = CAEN_DGTZ_OpenDigitizer(CAEN_DGTZ_USB, 0, 0, 0, &dt5751);
+  err = CAEN_DGTZ_OpenDigitizer(CAEN_DGTZ_OpticalLink, 0, 0, 0, &dt5751);
+  if (err) err = CAEN_DGTZ_OpenDigitizer(CAEN_DGTZ_USB, 0, 0, 0, &dt5751);
   if (err) { printf("Can't open DT5751!"); return 1; }
 
   // get board info
