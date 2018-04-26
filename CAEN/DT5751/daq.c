@@ -68,8 +68,12 @@ int main(int argc, char* argv[])
   err |= CAEN_DGTZ_SetIOLevel(dt5751,cfg.exTrgSrc);
   err |= CAEN_DGTZ_SetExtTriggerInputMode(dt5751,cfg.exTrgMod);
   err |= CAEN_DGTZ_SetSWTriggerMode(dt5751,cfg.swTrgMod);
-  err |= CAEN_DGTZ_SetChannelSelfTrigger(dt5751,cfg.chTrgMod,cfg.trgMask);
-  for (ich=0; ich<Nch; ich++) { // configure individual channels
+  // set up trigger coincidence among channels
+  err |= CAEN_DGTZ_WriteRegister(dt5751,0x810c,cfg.trgMask);
+  // take the right most 4 bits in cfg.trgMask to set trg mode
+  err |= CAEN_DGTZ_SetChannelSelfTrigger(dt5751,cfg.chTrgMod,cfg.trgMask & 0xf);
+  // configure individual channels
+  for (ich=0; ich<Nch; ich++) {
     err |= CAEN_DGTZ_SetChannelDCOffset(dt5751,ich,cfg.offset[ich]);
     err |= CAEN_DGTZ_SetChannelTriggerThreshold(dt5751,ich,cfg.thr[ich]);
     err |= CAEN_DGTZ_SetTriggerPolarity(dt5751,ich,cfg.polarity>>ich&1);
