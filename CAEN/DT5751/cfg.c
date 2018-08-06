@@ -111,11 +111,13 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
 	cfg->swTrgMod = CAEN_DGTZ_TRGMODE_DISABLED;
       else if (strcmp(option, "extout_only")==0)
 	cfg->swTrgMod = CAEN_DGTZ_TRGMODE_EXTOUT_ONLY;
-      else if (strcmp(option, "acq_only")==0)
+      else if (strcmp(option, "acq_only")==0) {
 	cfg->swTrgMod = CAEN_DGTZ_TRGMODE_ACQ_ONLY;
-      else if (strcmp(option, "acq_and_extout")==0)
+        cfg->trgMask |= (1 << 31);
+      } else if (strcmp(option, "acq_and_extout")==0) {
 	cfg->swTrgMod = CAEN_DGTZ_TRGMODE_ACQ_AND_EXTOUT;
-      else {
+        cfg->trgMask |= (1 << 31);
+      } else {
 	printf("%s: invalid trigger mode\n", option);
 	return 1;
       }
@@ -151,11 +153,13 @@ int ParseConfigFile(FILE *fcfg, RUN_CFG_t *cfg)
 	cfg->exTrgMod = CAEN_DGTZ_TRGMODE_DISABLED;
       else if (strcmp(option, "extout_only")==0)
 	cfg->exTrgMod = CAEN_DGTZ_TRGMODE_EXTOUT_ONLY;
-      else if (strcmp(option, "acq_only")==0)
+      else if (strcmp(option, "acq_only")==0) {
 	cfg->exTrgMod = CAEN_DGTZ_TRGMODE_ACQ_ONLY;
-      else if (strcmp(option, "acq_and_extout")==0)
+        cfg->trgMask |= (1 << 30);
+      } else if (strcmp(option, "acq_and_extout")==0) {
 	cfg->exTrgMod = CAEN_DGTZ_TRGMODE_ACQ_AND_EXTOUT;
-      else {
+        cfg->trgMask |= (1 << 30);
+      } else {
 	printf("%s: invalid trigger mode\n", option);
 	return 1;
       }
