@@ -1,3 +1,7 @@
+ifeq ($(PREFIX),)
+  PREFIX=$(HOME)
+endif
+
 CFLAGS = -Wall -O2
 
 # Please define CAENSYS as an environmental variable
@@ -5,6 +9,8 @@ CFLAGS = -Wall -O2
 ifneq (X$(CAENSYS), X)
   CAENLIB = -L$(CAENSYS)/lib
   CFLAGS += -I$(CAENSYS)/include
+else
+  $(warning Please define CAENSYS)
 endif
 
 # include sscanf.c if glibc < 2.7
@@ -39,5 +45,9 @@ endif
 clean:
 	@for file in `cat .gitignore`; do rm -f $$file; done
 
-.PHONY: clean
+install:
+	mkdir -p $(PREFIX)/include/CAEN/DT5751
+	cp cfg.h $(PREFIX)/include/CAEN/DT5751
+
+.PHONY: clean install
 
