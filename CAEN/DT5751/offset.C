@@ -5,23 +5,23 @@ void extractOffsetData(int run=0)
    ofstream output("offset.dat",ofstream::app);
 
    unsigned int hdr[1000], raw;
-   input.read(reinterpret_cast<char *> &hdr,(4+10+4)*4);
+   input.read(reinterpret_cast<char *> (&hdr),(4+10+4)*4);
    output<<(hdr[13]&0xffff)<<" "; // set offset
 
    int wfsize=(hdr[14]-16)/4; // individual waveform size in bytes
-   input.read(reinterpret_cast<char *> &raw,4);
+   input.read(reinterpret_cast<char *> (&raw),4);
    output<<(raw&0x3FF)<<" ";
 
    input.seekg((4+10+4)*4+wfsize); // second waveform
-   input.read(reinterpret_cast<char *> &raw,4);
+   input.read(reinterpret_cast<char *> (&raw),4);
    output<<(raw&0x3FF)<<" ";
 
    input.seekg((4+10+4)*4+wfsize*2); // third waveform
-   input.read(reinterpret_cast<char *> &raw,4);
+   input.read(reinterpret_cast<char *> (&raw),4);
    output<<(raw&0x3FF)<<" ";
 
    input.seekg((4+10+4)*4+wfsize*3); // last waveform
-   input.read(reinterpret_cast<char *> &raw,4);
+   input.read(reinterpret_cast<char *> (&raw),4);
    output<<(raw&0x3FF)<<endl;
 
    input.close();
