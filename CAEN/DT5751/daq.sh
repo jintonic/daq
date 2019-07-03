@@ -17,8 +17,12 @@ cd $NICEDAT
 subdir=`ls -d1 ?????? | tail -1`
 cd $NICEDAT/$subdir
 file=`ls -1 run_??????.000001 | tail -1`
-six=${file:4:6}
-run=`expr $six + 1`
+if [ "X$file" != X ]; then
+  six=${file:4:6}
+  run=`expr $six + 1`
+else
+  run=`expr $subdir + 0`
+fi
 # create a new subdir every 100 run
 if [ `expr $run%100|bc` -eq 0 ]; then
   subdir=`printf %06d $run`
