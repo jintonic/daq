@@ -10,7 +10,10 @@ ifneq (X$(CAENSYS), X)
   CAENLIB = -L$(CAENSYS)/lib
   CFLAGS += -I$(CAENSYS)/include
 else
-  $(warning Please define CAENSYS)
+  # if CAENSYS is not defined, check standard location
+  ifeq (, $(wildcard /usr/include/CAENDigitizer.h))
+    $(warning Please define CAENSYS if CAEN libs are not in /usr/lib)
+  endif
 endif
 
 # include sscanf.c if glibc < 2.7
